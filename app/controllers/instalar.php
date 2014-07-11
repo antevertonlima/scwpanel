@@ -1,0 +1,668 @@
+<?php if (!defined("BASEPATH")) exit("No direct script access allowed");
+class Instalar extends CI_Controller {
+    public function __construct() {
+        parent::__construct();
+		$this->load->library(array('parser', 'sistema', 'session', 'form_validation'));
+    	$this->load->helper(array('form', 'url', 'array', 'text','funcoes','file'));
+    }
+	public function load_template() {
+    $this->load->library('sistema');
+    $this->parser->parse($this->sistema->tema['template'], get_tema());
+	}
+	public function load_modulo($modulo = NULL, $tela = NULL, $diretorio = 'painel') {
+	    if ($modulo != NULL):
+	        return $this->load->view("$diretorio/$modulo", array('tela' => $tela), TRUE);
+	    else:
+	        return FALSE;
+	    endif;
+	}
+	public function erros_validacao() {
+    if (validation_errors())
+        echo '<div class="alert-box alert">' . validation_errors('<p>', '</p>') . '</div>';
+	}
+	//seta valores ao array $tema da classe sistema
+	public function set_tema($prop, $valor, $replace = TRUE) {
+	    $this->load->library('sistema');
+	    if ($replace):
+	        $this->sistema->tema[$prop] = $valor;
+	    else:
+	        if (!isset($this->sistema->tema[$prop]))
+	            $this->sistema->tema[$prop] = '';
+	        $this->sistema->tema[$prop] .= $valor;
+	    endif;
+	}
+	
+    public function index() {
+    	set_tema('headerinc', load_css(array('foundation.min', 'app')), FALSE);
+	    set_tema('headerinc', load_js(array('foundation.min', 'app')), FALSE);
+	    set_tema('footerinc', '', FALSE);
+    	set_tema('titulo_padrao', 'Gerenciamento de conteúdo');
+	    set_tema('rodape', '<p>&copy; 2012 - ' . date('Y') . ' | Todos os direitos reservados para <a href="http://hebromtech.pw">HebromTech.pw</a>');
+	    set_tema('template', 'scwpanel/painel_view');
+        set_tema('titulo', 'Instalação do sistema');
+        set_tema('conteudo', load_modulo('instalar', 'instalar','scwpanel'));
+        set_tema('rodape', '');
+        load_template();
+    }
+	public function instalar_painel(){
+        $this->form_validation->set_rules('url_base', 'URL', 'trim|required|strtolower');
+        $this->form_validation->set_rules('chave_seguranca', 'CHAVE DE SEGURANÇA', 'trim|required|strtolower');
+        $this->form_validation->set_rules('tempo_sessao', 'TEMPO DA SESSÃO', 'trim|required|numeric');
+        $this->form_validation->set_rules('hostname', 'SERVIDOR', 'trim|required');
+        $this->form_validation->set_rules('username', 'USUÁRIO', 'trim|required');
+        $this->form_validation->set_rules('password', 'SENHA', 'trim');
+        $this->form_validation->set_rules('database', 'NOME DO BD', 'trim|required');
+        $this->form_validation->set_rules('user_nome', 'NOME COMPLETO', 'trim|required|ucwords');
+        $this->form_validation->set_rules('user_email', 'EMAIL', 'trim|required|valid_email|strtolower');
+        $this->form_validation->set_rules('user_login', 'LOGIN', 'trim|required|min_length[4]|strtolower');
+        $this->form_validation->set_rules('user_senha', 'SENHA', 'trim|required|min_length[4]|strtolower');
+        if ($this->form_validation->run() == TRUE):
+            //criar arquivos
+            $this->load->helper('file');
+            $file_config = '
+<?php  if ( ! defined("BASEPATH")) exit("No direct script access allowed");
+/*
+|--------------------------------------------------------------------------
+| Base Site URL
+|--------------------------------------------------------------------------
+|
+| URL to your CodeIgniter root. Typically this will be your base URL,
+| WITH a trailing slash:
+|
+|	http://example.com/
+|
+| If this is not set then CodeIgniter will guess the protocol, domain and
+| path to your installation.
+|
+*/
+$config["base_url"]	= "' . $this->input->post('url_base') . '";
+/*
+|--------------------------------------------------------------------------
+| Index File
+|--------------------------------------------------------------------------
+|
+| Typically this will be your index.php file, unless you"ve renamed it to
+| something else. If you are using mod_rewrite to remove the page set this
+| variable so that it is blank.
+|
+*/
+$config["index_page"] = "";
+/*
+|--------------------------------------------------------------------------
+| URI PROTOCOL
+|--------------------------------------------------------------------------
+|
+| This item determines which server global should be used to retrieve the
+| URI string.  The default setting of "AUTO" works for most servers.
+| If your links do not seem to work, try one of the other delicious flavors:
+|
+| "AUTO"			Default - auto detects
+| "PATH_INFO"		Uses the PATH_INFO
+| "QUERY_STRING"	Uses the QUERY_STRING
+| "REQUEST_URI"		Uses the REQUEST_URI
+| "ORIG_PATH_INFO"	Uses the ORIG_PATH_INFO
+|
+*/
+$config["uri_protocol"]	= "AUTO";
+/*
+|--------------------------------------------------------------------------
+| URL suffix
+|--------------------------------------------------------------------------
+|
+| This option allows you to add a suffix to all URLs generated by CodeIgniter.
+| For more information please see the user guide:
+|
+| http://codeigniter.com/user_guide/general/urls.html
+*/
+$config["url_suffix"] = "";
+/*
+|--------------------------------------------------------------------------
+| Default Language
+|--------------------------------------------------------------------------
+|
+| This determines which set of language files should be used. Make sure
+| there is an available translation if you intend to use something other
+| than english.
+*/
+$config["language"]	= "pt-BR";
+/*
+|--------------------------------------------------------------------------
+| Default Character Set
+|--------------------------------------------------------------------------
+|
+| This determines which character set is used by default in various methods
+| that require a character set to be provided.
+*/
+$config["charset"] = "UTF-8";
+/*
+|--------------------------------------------------------------------------
+| Enable/Disable System Hooks
+|--------------------------------------------------------------------------
+|
+| If you would like to use the "hooks" feature you must enable it by
+| setting this variable to TRUE (boolean).  See the user guide for details.
+*/
+$config["enable_hooks"] = FALSE;
+/*
+|--------------------------------------------------------------------------
+| Class Extension Prefix
+|--------------------------------------------------------------------------
+|
+| This item allows you to set the filename/classname prefix when extending
+| native libraries.  For more information please see the user guide:
+|
+| http://codeigniter.com/user_guide/general/core_classes.html
+| http://codeigniter.com/user_guide/general/creating_libraries.html
+*/
+$config["subclass_prefix"] = "HT_";
+/*
+|--------------------------------------------------------------------------
+| Allowed URL Characters
+|--------------------------------------------------------------------------
+|
+| This lets you specify with a regular expression which characters are permitted
+| within your URLs.  When someone tries to submit a URL with disallowed
+| characters they will get a warning message.
+|
+| As a security measure you are STRONGLY encouraged to restrict URLs to
+| as few characters as possible.  By default only these are allowed: a-z 0-9~%.:_-
+|
+| Leave blank to allow all characters -- but only if you are insane.
+|
+| DO NOT CHANGE THIS UNLESS YOU FULLY UNDERSTAND THE REPERCUSSIONS!!
+*/
+$config["permitted_uri_chars"] = "a-z 0-9~%.:_\-";
+/*
+|--------------------------------------------------------------------------
+| Enable Query Strings
+|--------------------------------------------------------------------------
+|
+| By default CodeIgniter uses search-engine friendly segment based URLs:
+| example.com/who/what/where/
+|
+| By default CodeIgniter enables access to the $_GET array.  If for some
+| reason you would like to disable it, set "allow_get_array" to FALSE.
+|
+| You can optionally enable standard query string based URLs:
+| example.com?who=me&what=something&where=here
+|
+| Options are: TRUE or FALSE (boolean)
+|
+| The other items let you set the query string "words" that will
+| invoke your controllers and its functions:
+| example.com/index.php?c=controller&m=function
+|
+| Please note that some of the helpers won"t work as expected when
+| this feature is enabled, since CodeIgniter is designed primarily to
+| use segment based URLs.
+*/
+$config["allow_get_array"]		= TRUE;
+$config["enable_query_strings"] = FALSE;
+$config["controller_trigger"]	= "c";
+$config["function_trigger"]		= "m";
+$config["directory_trigger"]	= "d"; // experimental not currently in use
+/*
+|--------------------------------------------------------------------------
+| Error Logging Threshold
+|--------------------------------------------------------------------------
+|
+| If you have enabled error logging, you can set an error threshold to
+| determine what gets logged. Threshold options are:
+| You can enable error logging by setting a threshold over zero. The
+| threshold determines what gets logged. Threshold options are:
+|
+|	0 = Disables logging, Error logging TURNED OFF
+|	1 = Error Messages (including PHP errors)
+|	2 = Debug Messages
+|	3 = Informational Messages
+|	4 = All Messages
+|
+| For a live site you"ll usually only enable Errors (1) to be logged otherwise
+| your log files will fill up very fast.
+*/
+$config["log_threshold"] = 0;
+/*
+|--------------------------------------------------------------------------
+| Error Logging Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| application/logs/ folder. Use a full server path with trailing slash.
+*/
+$config["log_path"] = "";
+/*
+|--------------------------------------------------------------------------
+| Date Format for Logs
+|--------------------------------------------------------------------------
+|
+| Each item that is logged has an associated date. You can use PHP date
+| codes to set your own date formatting
+*/
+$config["log_date_format"] = "Y-m-d H:i:s";
+/*
+|--------------------------------------------------------------------------
+| Cache Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| system/cache/ folder.  Use a full server path with trailing slash.
+*/
+$config["cache_path"] = "";
+/*
+|--------------------------------------------------------------------------
+| Encryption Key
+|--------------------------------------------------------------------------
+|
+| If you use the Encryption class or the Session class you
+| MUST set an encryption key.  See the user guide for info.
+*/
+$config["encryption_key"] = "' . $this->input->post('chave_seguranca') . '";
+/*
+|--------------------------------------------------------------------------
+| Session Variables
+|--------------------------------------------------------------------------
+|
+| "sess_cookie_name"		= the name you want for the cookie
+| "sess_expiration"			= the number of SECONDS you want the session to last.
+|   by default sessions last 7200 seconds (two hours).  Set to zero for no expiration.
+| "sess_expire_on_close"	= Whether to cause the session to expire automatically
+|   when the browser window is closed
+| "sess_encrypt_cookie"		= Whether to encrypt the cookie
+| "sess_use_database"		= Whether to save the session data to a database
+| "sess_table_name"			= The name of the session database table
+| "sess_match_ip"			= Whether to match the user"s IP address when reading the session data
+| "sess_match_useragent"	= Whether to match the User Agent when reading the session data
+| "sess_time_to_update"		= how many seconds between CI refreshing Session Information
+|
+*/
+$config["sess_cookie_name"]		= "ci_session";
+$config["sess_expiration"]		= ' . $this->input->post('tempo_sessao') . ';
+$config["sess_expire_on_close"]	= FALSE;
+$config["sess_encrypt_cookie"]	= FALSE;
+$config["sess_use_database"]	= FALSE;
+$config["sess_table_name"]		= "ci_sessions";
+$config["sess_match_ip"]		= FALSE;
+$config["sess_match_useragent"]	= TRUE;
+$config["sess_time_to_update"]	= 300;
+/*
+|--------------------------------------------------------------------------
+| Cookie Related Variables
+|--------------------------------------------------------------------------
+|
+| "cookie_prefix" = Set a prefix if you need to avoid collisions
+| "cookie_domain" = Set to .your-domain.com for site-wide cookies
+| "cookie_path"   =  Typically will be a forward slash
+| "cookie_secure" =  Cookies will only be set if a secure HTTPS connection exists.
+*/
+$config["cookie_prefix"]	= "";
+$config["cookie_domain"]	= "";
+$config["cookie_path"]		= "/";
+$config["cookie_secure"]	= FALSE;
+/*
+|--------------------------------------------------------------------------
+| Global XSS Filtering
+|--------------------------------------------------------------------------
+|
+| Determines whether the XSS filter is always active when GET, POST or
+| COOKIE data is encountered
+*/
+$config["global_xss_filtering"] = FALSE;
+/*
+|--------------------------------------------------------------------------
+| Cross Site Request Forgery
+|--------------------------------------------------------------------------
+| Enables a CSRF cookie token to be set. When set to TRUE, token will be
+| checked on a submitted form. If you are accepting user data, it is strongly
+| recommended CSRF protection be enabled.
+|
+| "csrf_token_name" = The token name
+| "csrf_cookie_name" = The cookie name
+| "csrf_expire" = The number in seconds the token should expire.
+*/
+$config["csrf_protection"]  = FALSE;
+$config["csrf_token_name"]  = "csrf_test_name";
+$config["csrf_cookie_name"] = "csrf_cookie_name";
+$config["csrf_expire"]      = 7200;
+/*
+|--------------------------------------------------------------------------
+| Output Compression
+|--------------------------------------------------------------------------
+|
+| Enables Gzip output compression for faster page loads.  When enabled,
+| the output class will test whether your server supports Gzip.
+| Even if it does, however, not all browsers support compression
+| so enable only if you are reasonably sure your visitors can handle it.
+|
+| VERY IMPORTANT:  If you are getting a blank page when compression is enabled it
+| means you are prematurely outputting something to your browser. It could
+| even be a line of whitespace at the end of one of your scripts.  For
+| compression to work, nothing can be sent before the output buffer is called
+| by the output class.  Do not "echo" any values with compression enabled.
+*/
+$config["compress_output"] = FALSE;
+/*
+|--------------------------------------------------------------------------
+| Master Time Reference
+|--------------------------------------------------------------------------
+|
+| Options are "local" or "gmt".  This pref tells the system whether to use
+| your server"s local time as the master "now" reference, or convert it to
+| GMT.  See the "date helper" page of the user guide for information
+| regarding date handling.
+*/
+$config["time_reference"] = "local";
+/*
+|--------------------------------------------------------------------------
+| Rewrite PHP Short Tags
+|--------------------------------------------------------------------------
+|
+| If your PHP installation does not have short tag support enabled CI
+| can rewrite the tags on-the-fly, enabling you to utilize that syntax
+| in your view files.  Options are TRUE or FALSE (boolean)
+*/
+$config["rewrite_short_tags"] = FALSE;
+/*
+|--------------------------------------------------------------------------
+| Reverse Proxy IPs
+|--------------------------------------------------------------------------
+|
+| If your server is behind a reverse proxy, you must whitelist the proxy IP
+| addresses from which CodeIgniter should trust the HTTP_X_FORWARDED_FOR
+| header in order to properly identify the visitor"s IP address.
+| Comma-delimited, e.g. "10.0.1.200,10.0.1.201"
+*/
+$config["proxy_ips"] = "";
+/* End of file config.php */
+/* Location: ./app/config/config.php */
+			';
+            write_file('./app/config/config.php', trim($file_config));
+
+            $file_bd = '
+<?php  if ( ! defined("BASEPATH")) exit("No direct script access allowed");
+/*
+| -------------------------------------------------------------------
+| DATABASE CONNECTIVITY SETTINGS
+| -------------------------------------------------------------------
+| This file will contain the settings needed to access your database.
+|
+| For complete instructions please consult the "Database Connection"
+| page of the User Guide.
+|
+| -------------------------------------------------------------------
+| EXPLANATION OF VARIABLES
+| -------------------------------------------------------------------
+|
+|	["hostname"] The hostname of your database server.
+|	["username"] The username used to connect to the database
+|	["password"] The password used to connect to the database
+|	["database"] The name of the database you want to connect to
+|	["dbdriver"] The database type. ie: mysql.  Currently supported:
+				 mysql, mysqli, postgre, odbc, mssql, sqlite, oci8
+|	["dbprefix"] You can add an optional prefix, which will be added
+|				 to the table name when using the  Active Record class
+|	["pconnect"] TRUE/FALSE - Whether to use a persistent connection
+|	["db_debug"] TRUE/FALSE - Whether database errors should be displayed.
+|	["cache_on"] TRUE/FALSE - Enables/disables query caching
+|	["cachedir"] The path to the folder where cache files should be stored
+|	["char_set"] The character set used in communicating with the database
+|	["dbcollat"] The character collation used in communicating with the database
+|				 NOTE: For MySQL and MySQLi databases, this setting is only used
+| 				 as a backup if your server is running PHP < 5.2.3 or MySQL < 5.0.7
+|				 (and in table creation queries made with DB Forge).
+| 				 There is an incompatibility in PHP with mysql_real_escape_string() which
+| 				 can make your site vulnerable to SQL injection if you are using a
+| 				 multi-byte character set and are running versions lower than these.
+| 				 Sites using Latin-1 or UTF-8 database character set and collation are unaffected.
+|	["swap_pre"] A default table prefix that should be swapped with the dbprefix
+|	["autoinit"] Whether or not to automatically initialize the database.
+|	["stricton"] TRUE/FALSE - forces "Strict Mode" connections
+|							- good for ensuring strict SQL while developing
+|
+| The $active_group variable lets you choose which connection group to
+| make active.  By default there is only one group (the "default" group).
+|
+| The $active_record variables lets you determine whether or not to load
+| the active record class
+*/
+$active_group = "default";
+$active_record = TRUE;
+$db["default"]["hostname"] = "' . $this->input->post('hostname') . '";
+$db["default"]["username"] = "' . $this->input->post('username') . '";
+$db["default"]["password"] = "' . $this->input->post('password') . '";
+$db["default"]["database"] = "' . $this->input->post('database') . '";
+$db["default"]["dbdriver"] = "mysql";
+$db["default"]["dbprefix"] = "";
+$db["default"]["pconnect"] = TRUE;
+$db["default"]["db_debug"] = TRUE;
+$db["default"]["cache_on"] = FALSE;
+$db["default"]["cachedir"] = "";
+$db["default"]["char_set"] = "utf8";
+$db["default"]["dbcollat"] = "utf8_general_ci";
+$db["default"]["swap_pre"] = "";
+$db["default"]["autoinit"] = TRUE;
+$db["default"]["stricton"] = FALSE;
+/* End of file database.php */
+/* Location: ./app/config/database.php */
+			';
+            write_file('./app/config/database.php', trim($file_bd));
+			$file_autoload = '
+<?php  if ( ! defined("BASEPATH")) exit("No direct script access allowed");
+/*
+| -------------------------------------------------------------------
+| AUTO-LOADER
+| -------------------------------------------------------------------
+| This file specifies which systems should be loaded by default.
+|
+| In order to keep the framework as light-weight as possible only the
+| absolute minimal resources are loaded by default. For example,
+| the database is not connected to automatically since no assumption
+| is made regarding whether you intend to use it.  This file lets
+| you globally define which systems you would like loaded with every
+| request.
+|
+| -------------------------------------------------------------------
+| Instructions
+| -------------------------------------------------------------------
+|
+| These are the things you can load automatically:
+|
+| 1. Packages
+| 2. Libraries
+| 3. Helper files
+| 4. Custom config files
+| 5. Language files
+| 6. Models
+|
+*/
+/*
+| -------------------------------------------------------------------
+|  Auto-load Packges
+| -------------------------------------------------------------------
+| Prototype:
+|
+|  $autoload["packages"] = array(APPPATH."third_party", "/usr/local/shared");
+|
+*/
+$autoload["packages"] = array();
+/*
+| -------------------------------------------------------------------
+|  Auto-load Libraries
+| -------------------------------------------------------------------
+| These are the classes located in the system/libraries folder
+| or in your application/libraries folder.
+|
+| Prototype:
+|
+|	$autoload["libraries"] = array("database", "session", "xmlrpc");
+*/
+$autoload["libraries"] = array("database");
+/*
+| -------------------------------------------------------------------
+|  Auto-load Helper Files
+| -------------------------------------------------------------------
+| Prototype:
+|
+|	$autoload["helper"] = array("url", "file");
+*/
+$autoload["helper"] = array("funcoes");
+/*
+| -------------------------------------------------------------------
+|  Auto-load Config files
+| -------------------------------------------------------------------
+| Prototype:
+|
+|	$autoload["config"] = array("config1", "config2");
+|
+| NOTE: This item is intended for use ONLY if you have created custom
+| config files.  Otherwise, leave it blank.
+|
+*/
+$autoload["config"] = array();
+/*
+| -------------------------------------------------------------------
+|  Auto-load Language files
+| -------------------------------------------------------------------
+| Prototype:
+|
+|	$autoload["language"] = array("lang1", "lang2");
+|
+| NOTE: Do not include the "_lang" part of your file.  For example
+| "codeigniter_lang.php" would be referenced as array("codeigniter");
+|
+*/
+$autoload["language"] = array();
+/*
+| -------------------------------------------------------------------
+|  Auto-load Models
+| -------------------------------------------------------------------
+| Prototype:
+|
+|	$autoload["model"] = array("model1", "model2");
+|
+*/
+$autoload["model"] = array();
+/* End of file autoload.php */
+/* Location: ./app/config/autoload.php */
+			';
+            write_file('./app/config/autoload.php', trim($file_autoload));			
+
+            //conectar bd
+            $this->load->database();
+            $this->db->reconnect();
+
+            //criar tabelas
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `auditoria` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `usuario` varchar(45) NOT NULL,
+                                `data_hora` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                `operacao` varchar(45) NOT NULL,
+                                `query` text NOT NULL,
+                                `observacao` text NOT NULL,
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `depoimentos` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `nome` varchar(100) NOT NULL,
+                                `depoimento` longtext NOT NULL,
+                                `data` timestamp NULL DEFAULT NULL,
+                                `status` char(1) DEFAULT '0',
+                                `updates` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                 PRIMARY KEY (`id`)
+                                )ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `midia` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `tipo` char(1) NOT NULL,
+                                `nome` varchar(45) NOT NULL,
+                                `descricao` varchar(255) NOT NULL,
+                                `idgaleria` int(11) NOT NULL,
+                                `caminho` varchar(100) NOT NULL,
+                                `arquivo` varchar(255) NOT NULL,
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+            
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `galerias` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `idpagina` int(11) NOT NULL,
+                                `nome` varchar(100) NOT NULL,
+                                `descricao` varchar(255) NOT NULL,
+                                `data` timestamp NOT NULL,
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `paginas` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `titulo` varchar(255) NOT NULL,
+                                `slug` varchar(255) NOT NULL,
+                                `conteudo` longtext NOT NULL,
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `settings` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `nome_config` varchar(255) NOT NULL,
+                                `valor_config` text NOT NULL,
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            $this->db->query($sql_bd);
+
+            $sql_bd = "CREATE TABLE IF NOT EXISTS `usuarios` (
+                                `id` int(11) NOT NULL AUTO_INCREMENT,
+                                `nome` varchar(100) NOT NULL,
+                                `email` varchar(100) NOT NULL,
+                                `login` varchar(45) NOT NULL,
+                                `senha` varchar(32) NOT NULL,
+                                `ativo` tinyint(1) NOT NULL DEFAULT '1',
+                                `adm` tinyint(1) NOT NULL DEFAULT '0',
+                                PRIMARY KEY (`id`)
+                              ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            $criacao_bd = $this->db->query($sql_bd);
+
+            //criar o primeiro usuario
+            if ($criacao_bd == TRUE):
+                $dados["nome"] = $this->input->post('user_nome');
+                $dados["email"] = $this->input->post('user_email');
+                $dados["login"] = $this->input->post('user_login');
+                $dados["senha"] = md5($this->input->post('user_senha'));
+                $dados["adm"] = 1;
+                $usuario = $this->db->insert('usuarios', $dados);
+                if ($usuario == TRUE)
+                    redirect('instalar/sucesso');
+           		 endif;
+			else:
+	    	set_tema('headerinc', load_css(array('foundation.min', 'app')), FALSE);
+		    set_tema('headerinc', load_js(array('foundation.min', 'app')), FALSE);
+		    set_tema('footerinc', '', FALSE);			
+			set_tema('titulo_padrao', 'Gerenciamento de conteúdo');
+		    set_tema('rodape', '<p>&copy; 2012 - ' . date('Y') . ' | Todos os direitos reservados para <a href="http://hebromtech.pw">HebromTech.pw</a>');
+		    set_tema('template', 'scwpanel/painel_view');
+	        set_tema('titulo', 'Instalação do sistema');
+	        set_tema('conteudo', load_modulo('instalar', 'instalar','scwpanel'));
+	        set_tema('rodape', '');
+		        load_template();
+		endif;
+	}
+
+    public function sucesso() {
+    	set_tema('headerinc', load_css(array('foundation.min', 'app')), FALSE);
+	    set_tema('headerinc', load_js(array('foundation.min', 'app')), FALSE);
+	    set_tema('footerinc', '', FALSE);    	
+    	set_tema('titulo_padrao', 'Gerenciamento de conteúdo');
+	    set_tema('rodape', '<p>&copy; 2012 - ' . date('Y') . ' | Todos os direitos reservados para <a href="http://hebromtech.pw">HebromTech.pw</a>');
+	    set_tema('template', 'scwpanel/painel_view');
+        set_tema('titulo', 'Instalação concluída');
+        set_tema('conteudo', load_modulo('instalar', 'sucesso','scwpanel'));
+        set_tema('rodape', '');
+        load_template();
+    }
+
+}
+
+/* End of file instalar.php */
+/* Location: ./application/controllers/instalar.php */
