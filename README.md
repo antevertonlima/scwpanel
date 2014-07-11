@@ -1,2 +1,3 @@
 scwpanel
 ========
+Desenvolvido usando CodeIgniter
